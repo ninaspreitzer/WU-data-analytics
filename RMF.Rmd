@@ -1,0 +1,156 @@
+---
+title: "RMF_Assigment_11707368&h11740186"
+output: html_document
+---
+
+```{r Library, include=FALSE}
+library(dplyr) 
+library(cluster)
+library(plotly)
+library(scatterplot3d) 
+library(dbscan)
+```
+# Team: Nina Spreitzer & Florian Kollarczik
+```{r original Data}
+load(url("http://statmath.wu.ac.at/~vana/datasets/RMFAnalysis.rda"))
+head(RMFAnalysis)
+```
+
+#### Original Data
+
+First we're loading the dataset and look at it with the head() function. 
+Then we're plotting the dataset which gives an overview about all the data included.
+
+```{r selectFrequency}
+RMF <- select(RMFAnalysis, Frequency, Monetary.mean, Recency)
+head(RMF)
+scatterplot3d(RMF)
+```
+
+#### Selection
+We're select Frequency, Monetary.mean, Recency as the relevant variables.
+After doing that we're looking at the new head rows with the selectes three columns. 
+Then we've plotted the dataset with a 3D scatterplot. 
+
+```{r Frequency}
+summary(RMF$Frequency)
+boxplot(RMF$Frequency)
+
+#boxplot(RMF$Frequency)$out
+outliers <- boxplot(RMF$Frequency, plot=FALSE)$out
+
+#RMF[which(RMF$Frequency %in% outliers),]
+RMF <- RMF[-which(RMF$Frequency %in% outliers),]
+
+boxplot(RMF$Frequency)
+```
+
+#### Variable: Frequency
+Assign the outlier values into a vector. Dropping the objects which contain outliers.
+
+```{r Monetary.mean}
+summary(RMF$Monetary.mean)
+boxplot(RMF$Monetary.mean)
+
+#boxplot(RMF$Monetary.mean)$out
+outliers1 <- boxplot(RMF$Monetary.mean, plot=FALSE)$out
+
+#RMF[which(RMF$Monetary.mean %in% outliers1),]
+RMF <- RMF[-which(RMF$Monetary.mean %in% outliers1),]
+
+boxplot(RMF$Monetary.mean)
+```
+
+#### Variable: Monetary Mean 
+Assign the outlier values into a vector. Dropping the objects which contain outliers.
+
+```{r Recency}
+summary(RMF$Recency)
+boxplot(RMF$Recency)
+
+#boxplot(RMF$Recency)$out
+outliers2 <- boxplot(RMF$Recency, plot=FALSE)$out
+
+#RMF[which(RMF$Recency %in% outliers2),]
+RMF <- RMF[-which(RMF$Recency %in% outliers2),]
+
+boxplot(RMF$Recency)
+```
+
+### Variable: Recency
+Assign the outlier values into a vector. Dropping the objects which contain outliers.
+
+```{r clean scale Data}
+scatterplot3d(RMF)
+
+RMF_scaled <- scale(RMF)
+scatterplot3d(RMF_scaled)
+
+```
+
+### clean and scale Data
+We're plotting the new tidied dataset in 3 dimensions. Afterwards we're scaling our Data and plot it again.
+
+```{r Partitional Clustering}
+clusters <- 2:15
+nstart <- 5
+
+WSS <- sapply(clusters, 
+              function(x) { 
+                kmeans(RMF_scaled, centers=x, nstart=nstart)$tot.withinss
+              })
+plot(clusters, WSS, type="l")
+
+model.k <- kmeans(RMF_scaled, centers=4, nstart=nstart)
+model.k$centers
+
+scatterplot3d(RMF_scaled, color= model.k$cluster)
+points(model.k$centers, pch=3, cex=2)
+```
+
+### Partitional Clustering - k-means Clustering
+We're determining how many clusters we should use with the elbow method. It tells us to cluster in four different groups. Therefore we're plotting our 3D plot model with four clusters.
+
+```{r Hierachical Clustering}
+di <- dist(RMF_scaled)
+model.h <- hclust(di)
+
+plot(model.h)
+groups <- cutree(model.h, h=4)
+
+groups <- cutree(model.h, k=4)
+rect.hclust(model.h, k=4)
+
+scatterplot3d(RMF_scaled, color=groups)
+```
+
+### Hierachical Clustering
+We're splitting the data in groups. The algorithm seeks to build a hierarchical of clusters. In our case we chose to seperate the data by four clusters.
+
+```{r DBScan}
+kNNdistplot(RMF_scaled, k = 3) 
+
+model.d <- dbscan::dbscan(RMF_scaled, eps=.4, minPts=50)
+
+scatterplot3d(RMF_scaled, color=model.d$cluster+1)
+
+```
+
+### DBScan
+We used the elbow method to find the most suitable epsilon for our data, which is around 0,4 in our case. By choosing this epsilon we get 4 clusters in our 3D plot model. 
+
+
+### Grouping Suggestion
+By clustering the dataset in three different ways, it is possible to suggest which methods are more useful for grouping the measurements than others.
+
+DBScan: By looking at the 3D boxplot one can notice that all measurements are concentrated in one specific corner. Since the DBScan is a density-based algorithm, it is not recommended to use with a dataset like this, because all measurements are located pretty tight together.
+
+Hierachical Clustering: Time complexety, it is not suitable for large datasets and the order of the data has an impact on the final result. Additionally one of our 4 clusters is marginally small compared to the other three.
+ 
+K-mean: Therefore we're choosing the K-mean model since it is easy to implement and provides the ability to produce Hierachical Clustering. Furthermore if K is small it means the algorithm can be computationally faster than Hierachical Clustering. 
+***
+
+```{r Centers}
+model.k$centers
+```
+This displays the average value for each segment.
